@@ -1179,11 +1179,11 @@ function showGallery() {
     galleryContainer.className = 'gallery-container';
 
     const images = [
-        'images/gal1.jpg',
-        'images/gal2.jpg',
-        'images/gal3.jpg',
-        'images/gal4.jpg',
-        'images/gal5.jpg'
+        'images/gal1.png',
+        'images/gal2.png',
+        'images/gal3.png',
+        'images/gal4.png',
+        'images/gal5.png'
     ];
 
     galleryContainer.innerHTML = `
