@@ -1,8 +1,13 @@
+// Загружаем .env до require модулей, которые читают process.env
+try {
+  require('dotenv').config({ path: '.env.local' });
+} catch (e) {}
+try {
+  require('dotenv').config();
+} catch (e) {}
+
 const express = require('express');
 const sendContactRouter = require('./unisender-go-mailer');
-
-// Локально читаем .env.local, на Railway переменные задаются в дашборде
-try { require('dotenv').config({ path: '.env.local' }); } catch (e) {}
 
 const app = express();
 const PORT = process.env.PORT || 3000;

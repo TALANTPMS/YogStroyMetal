@@ -4,6 +4,13 @@ const cors = require('cors');
 const axios = require('axios');
 const FormData = require('form-data');
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`❌ Missing env: ${name}`);
+  }
+  return value.trim();
+}
 const router = express.Router();
 
 router.use(cors());
@@ -23,8 +30,19 @@ const BITRIX_TEMPLATE = {
   MESSENGER_FIELD_ID: 'UF_CRM_MESSENGER_FIELD_ID'
 };
 
-// Настройки UniSender Go API
-const UNISENDER_GO_API_KEY = process.env.UNISENDER_GO_API_KEY.trim();
+// Настройки UniSender Go API (ключ опционален при старте — сервер поднимается и без него)
+function getUnisenderGoApiKey() {
+  const raw = process.env.UNISENDER_GO_API_KEY;
+  if (raw == null || raw === '') return '';
+  return String(raw).trim();
+}
+
+if (!getUnisenderGoApiKey()) {
+  console.warn(
+    '[unisender] UNISENDER_GO_API_KEY не задан — письма не отправляются. Добавьте переменную в Railway → Variables.'
+  );
+}
+
 const UNISENDER_GO_FROM_EMAIL = 'noreply@lp-chat.kz';
 const UNISENDER_GO_FROM_NAME = 'Brusketta';
 
@@ -138,6 +156,15 @@ async function sendLeadToTelegram(data) {
  * Отправляет письмо через UniSender Go API
  */
 async function sendEmailViaUniSenderGo(data) {
+  const apiKey = getUnisenderGoApiKey();
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        'Почта не настроена: задайте переменную окружения UNISENDER_GO_API_KEY на сервере (Railway → Variables).'
+    };
+  }
+
   try {
     // Формируем HTML письмо
     const html = generateEmailHTML(data);
@@ -199,7 +226,7 @@ async function sendEmailViaUniSenderGo(data) {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-API-KEY': UNISENDER_GO_API_KEY
+            'X-API-KEY': apiKey
           },
           timeout: 10000 // 10 секунд таймаут
         });
