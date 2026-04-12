@@ -592,12 +592,12 @@ body {
 }
 
 .chat-send-btn:hover {
-    background-color: #0056b3;
+    background-color: #aca97e;
     transform: scale(1.05);
 }
 
 .chat-send-btn:active {
-    background-color: #004085;
+    background-color: #aca97e;
     transform: scale(0.95);
 }
 
