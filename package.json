@@ -1,0 +1,24 @@
+{
+  "name": "chat-landing",
+  "version": "1.0.0",
+  "description": "Chat landing page with AI consultant",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "static": "http-server -p 8080 -c-1"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "form-data": "^4.0.5"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

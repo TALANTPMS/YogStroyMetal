@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+
+
+.vercel
