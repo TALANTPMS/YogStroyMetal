@@ -1183,7 +1183,10 @@ function showGallery() {
         'images/gal2.png',
         'images/gal3.png',
         'images/gal4.png',
-        'images/gal5.png'
+        'images/gal5.png',
+        'images/gal6.png',
+        'images/gal7.png',
+        'images/gal8.png'
     ];
 
     galleryContainer.innerHTML = `
