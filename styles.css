@@ -255,13 +255,12 @@ body {
     position: relative;
     z-index: 20;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 38px;
+    margin-bottom: 249px;
 }
 
 .main-section {
-   display: flex;
-   flex-direction: column;
-   position: relative;
+   display: flex; 
 }
 
 .main-title {
@@ -1384,12 +1383,12 @@ body {
 }
 
 .hero {
-    position: relative;
+    position: absolute;
     z-index: 10;
     width: 263px;
-    top: auto;
-    left: auto;
-    margin: 12px auto 0;
+    top: 331px;
+    left: 37px;
+
 }
 
 .hero img {
@@ -1409,10 +1408,6 @@ body {
 
 /* Media Query: min-width 768px */
 @media (min-width: 768px) {
-    .main-section {
-        flex-direction: row;
-    }
-
     .wrapper {
         max-width: 720px;
         margin: 0 auto;
@@ -1570,7 +1565,6 @@ body {
     .text-content {
         margin-bottom: 50px;
         align-items:flex-start;
-        max-width: 360px;
     }
 
     .payment {
@@ -1582,11 +1576,9 @@ body {
     }
 
     .hero {
-        position: absolute;
         width: 335px;
         top: 52px;
         left: 374px;
-        margin: 0;
     }
 
 
@@ -1888,7 +1880,6 @@ body {
     .text-content {
         margin-bottom: 25px;
         align-items:flex-start;
-        max-width: 500px;
     }
 
     .footer-logo-img {
@@ -2298,7 +2289,6 @@ body {
 
     .text-content {
         margin-bottom: 28px;
-        max-width: 640px;
     }
 
     .connection-button {
