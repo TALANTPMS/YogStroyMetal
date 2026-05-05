@@ -104,7 +104,7 @@ body {
     font-family: "Montserrat-Regular";
     text-align: center;
     color: #262424;
-    /* background-color: #646242; */
+    /* background-color: #DBBA94; */
     background-color: #e1e1e1;
     display: block;
     padding: 4px 0;
@@ -186,7 +186,7 @@ body {
 
 .connection-button {
     font-family: "Montserrat-SemiBold", sans-serif;
-    background-color: #646242;
+    background-color: #DBBA94;
     color: #ffffff;
     display: flex;
     align-items: center;
@@ -430,7 +430,7 @@ body {
 }
 
 .message-user .message-content {
-    background-color: #646242;
+    background-color: #DBBA94;
     color: white;
     border-bottom-right-radius: 4px;
     font-family: "Montserrat-Medium";
@@ -573,7 +573,7 @@ body {
     width: 40px;
     height: 40px;
     padding: 0;
-    background-color: #646242;
+    background-color: #DBBA94;
     color: white;
     border: none;
     border-radius: 50%;
@@ -633,8 +633,8 @@ body {
 
 .start-question-btn:hover {
     font-style: bold;
-    background-color: #646242;
-    border: 1px solid #646242;
+    background-color: #DBBA94;
+    border: 1px solid #DBBA94;
     color: #ffffff;
 }
 
@@ -666,8 +666,8 @@ body {
 
 .option-button:hover {
     font-family: "Montserrat-SemiBold", sans-serif;
-    background-color: #646242;
-    border: 1px solid #646242;
+    background-color: #DBBA94;
+    border: 1px solid #DBBA94;
     color: #ffffff;
 }
 
@@ -700,8 +700,8 @@ body {
 
 .messenger-button:hover {
     font-family: "Montserrat-SemiBold", sans-serif;
-    background-color: #646242;
-    border: 1px solid #646242;
+    background-color: #DBBA94;
+    border: 1px solid #DBBA94;
     color: #ffffff;
 }
 
@@ -711,8 +711,8 @@ body {
 }
 
 .messenger-button--back:hover {
-    background-color: rgba(100, 98, 66, 0.15);
-    border-color: #646242;
+    background-color: rgba(219, 186, 148, 0.15);
+    border-color: #DBBA94;
     color: #181c18;
 }
 
@@ -775,7 +775,7 @@ body {
     text-align: center;
     border: none;
     border-radius: 100px;
-    background: #646242;
+    background: #DBBA94;
     box-shadow: 0px -2px 0px rgba(0, 0, 0, 0.3) inset;
     width: 75%;
     height: 44px;
@@ -851,8 +851,8 @@ body {
 }
 
 .chat-consent__checkbox:checked + .chat-consent__checkbox-ui {
-    background-color: #646242;
-    border-color: #646242;
+    background-color: #DBBA94;
+    border-color: #DBBA94;
 }
 
 .chat-consent__text {
@@ -1074,7 +1074,7 @@ body {
 }
 
 .call-modal__input:focus {
-    border-color: #646242;
+    border-color: #DBBA94;
     background: rgba(255, 255, 255, 0.03);
 }
 
@@ -1085,7 +1085,7 @@ body {
     margin: 0 auto;
     border: none;
     border-radius: 999px;
-    background: #646242;
+    background: #DBBA94;
     color: #fff;
     font-family: "Montserrat-Bold", sans-serif;
     font-size: 16px;
@@ -1227,16 +1227,16 @@ body {
 }
 
 .cookie-link {
-    color: #646242;
+    color: #DBBA94;
     text-decoration: underline;
 }
 
 .cookie-link:hover {
-    color: #646242;
+    color: #DBBA94;
 }
 
 .cookie-accept-btn {
-    background-color: #646242;
+    background-color: #DBBA94;
     color: #fff;
     border: none;
     border-radius: 16px;
@@ -1352,20 +1352,20 @@ body {
 .price-range {
     font-family: "Montserrat-Bold", sans-serif;
     font-style: italic;
-    color: #646242
+    color: #DBBA94
 }
 
 .warrant {
     font-family: "Montserrat-Bold", sans-serif;
     font-style: italic;
-    color: #646242
+    color: #DBBA94
 }
 
 .payment {
     font-family: "Montserrat-Regular", sans-serif;
     line-height: 160%;
     color: #ffffff;
-    background-color: #646242;
+    background-color: #DBBA94;
     margin-bottom: 12px;
     padding: 2px 9px 4px 9px;
     border-radius: 8px;
@@ -3126,7 +3126,7 @@ body {
 }
 
 .thanks-title--accent {
-    color: #646242;
+    color: #DBBA94;
 }
 
 .thanks-description {
@@ -3149,7 +3149,7 @@ body {
     line-height: 1;
     color: #fff;
     text-decoration: none;
-    background: #646242;
+    background: #DBBA94;
     transition: filter 0.2s ease, transform 0.1s ease;
 }
 
