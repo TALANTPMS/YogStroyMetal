@@ -179,33 +179,26 @@ async function loadSystemPrompt() {
     }
 }
 
-// Инициализация диалога
+// Инициализация диалога — заготовленное приветствие без запроса к API
 async function initializeDialog() {
-    const loadingId = addLoadingMessage();
     sendBtn.disabled = true;
     chatInput.disabled = true;
-    
+
     try {
-        // Добавляем инициализирующее сообщение пользователя
-        messageHistory.push({ role: 'user', content: 'Начни диалог следуя правилам системного промпта' });
-        
-        // Отправляем запрос к API
-        const botResponse = await sendMessageToAPI(messageHistory);
-        
-        // Добавляем ответ бота в чат (передаём loadingId чтобы не мигал)
-        await addBotMessage(botResponse, loadingId);
-        
-        // Добавляем ответ в историю
-        messageHistory.push({ role: 'assistant', content: botResponse });
+        await addBotMessage(INITIAL_GREETING, null, { fastMode: true });
+        messageHistory.push({ role: 'assistant', content: INITIAL_GREETING });
         if (!chatStartedGoalSent && typeof window.ym === 'function') {
             window.ym(109250103, 'reachGoal', 'chat_started');
             window.ym(109284321, 'reachGoal', 'chat_started');
             chatStartedGoalSent = true;
         }
-        
     } catch (error) {
         console.error('Ошибка при инициализации диалога:', error);
-        await addBotMessage('Здравствуйте! Я Роман, ИИ-консультант ЮгСтройМеталл. Чем могу помочь?', loadingId);
+        await addBotMessage(
+            'Здравствуйте! Я Роман, ИИ-консультант ЮгСтройМеталл. Помогу рассчитать стоимость навеса — чем могу помочь?',
+            null,
+            { fastMode: true }
+        );
         if (!chatStartedGoalSent && typeof window.ym === 'function') {
             window.ym(109250103, 'reachGoal', 'chat_started');
             window.ym(109284321, 'reachGoal', 'chat_started');
@@ -232,11 +225,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     chatForm.addEventListener('submit', handleSubmit);
 
-    // Загружаем системный промпт
-    await loadSystemPrompt();
-
-    // Инициализируем диалог
-    await initializeDialog();
+    // Приветствие сразу, промпт грузится параллельно
+    await Promise.all([loadSystemPrompt(), initializeDialog()]);
 });
 
 function cancelPageScrollAnimation() {
@@ -732,7 +722,9 @@ function showTypingIndicator() {
 
 // Добавление сообщения бота (с задержками)
 // existingLoader — если передан, переиспользует уже показанный индикатор для первого элемента
-async function addBotMessage(text, existingLoader) {
+// options.fastMode — мгновенный вывод заготовленного приветствия
+async function addBotMessage(text, existingLoader, options = {}) {
+    const fastMode = options.fastMode === true;
     const processedText = processBotMessage(text);
     
     // Собираем все элементы для последовательного вывода (порядок как в ответе модели)
@@ -768,16 +760,20 @@ async function addBotMessage(text, existingLoader) {
     }
     
     // Для первого элемента: переиспользуем существующий индикатор или создаём новый
-    let loader = existingLoader || addLoadingMessage();
-    
+    let loader = existingLoader || (fastMode ? null : addLoadingMessage());
+
     for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
-        
-        // Ждём задержку, затем заменяем/убираем индикатор
-        await sleep(item.delay);
-        
+        const delay = fastMode ? (i === 0 ? 0 : 300) : item.delay;
+
+        if (delay > 0) {
+            await sleep(delay);
+        }
+
         // Звук при появлении сообщения
-        playRingtone();
+        if (!fastMode) {
+            playRingtone();
+        }
         
         // Выводим элемент
         if (item.type === 'text') {
@@ -799,7 +795,7 @@ async function addBotMessage(text, existingLoader) {
         scrollToBottom();
         
         // Если не последний — сразу показываем новый индикатор
-        if (i < queue.length - 1) {
+        if (i < queue.length - 1 && !fastMode) {
             loader = addLoadingMessage();
         }
     }
