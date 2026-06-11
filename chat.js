@@ -5,6 +5,14 @@ const MODEL = 'gpt-4.1-mini';
 const MAX_TOKENS = 800;
 const MAX_HISTORY = 10; // Сохраняем только 10 последних сообщений
 
+// Заготовленное приветствие — показывается мгновенно, без запроса к API
+const INITIAL_GREETING = `Здравствуйте! Я Роман, ИИ-менеджер компании ЮгСтройМеталл.
+[MESSAGE_DIVIDER]
+Помогу рассчитать стоимость навеса под ваш участок — проектируем, изготавливаем и монтируем металлические навесы, заборы и ворота в Краснодаре и крае.
+[MESSAGE_DIVIDER]
+Выберите вопрос ниже или напишите свой — например, площадь и тип навеса, и я сориентирую по цене.
+[START_QUESTIONS]`;
+
 // Элементы DOM
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
@@ -171,33 +179,22 @@ async function loadSystemPrompt() {
     }
 }
 
-// Инициализация диалога
+// Инициализация диалога — мгновенное приветствие без ожидания API
 async function initializeDialog() {
-    const loadingId = addLoadingMessage();
     sendBtn.disabled = true;
     chatInput.disabled = true;
-    
+
     try {
-        // Добавляем инициализирующее сообщение пользователя
-        messageHistory.push({ role: 'user', content: 'Начни диалог следуя правилам системного промпта' });
-        
-        // Отправляем запрос к API
-        const botResponse = await sendMessageToAPI(messageHistory);
-        
-        // Добавляем ответ бота в чат (передаём loadingId чтобы не мигал)
-        await addBotMessage(botResponse, loadingId);
-        
-        // Добавляем ответ в историю
-        messageHistory.push({ role: 'assistant', content: botResponse });
+        await addBotMessage(INITIAL_GREETING, null, { fastMode: true });
+        messageHistory.push({ role: 'assistant', content: INITIAL_GREETING });
         if (!chatStartedGoalSent && typeof window.ym === 'function') {
             window.ym(109250103, 'reachGoal', 'chat_started');
             window.ym(109284321, 'reachGoal', 'chat_started');
             chatStartedGoalSent = true;
         }
-        
     } catch (error) {
         console.error('Ошибка при инициализации диалога:', error);
-        await addBotMessage('Здравствуйте! Я Роман, ИИ-консультант ЮгСтройМеталл. Чем могу помочь?', loadingId);
+        await addBotMessage('Здравствуйте! Я Роман, ИИ-консультант ЮгСтройМеталл. Помогу рассчитать стоимость навеса — чем могу помочь?', null, { fastMode: true });
         if (!chatStartedGoalSent && typeof window.ym === 'function') {
             window.ym(109250103, 'reachGoal', 'chat_started');
             window.ym(109284321, 'reachGoal', 'chat_started');
@@ -280,14 +277,21 @@ function initCookieBanner() {
     const banner = document.getElementById('cookieBanner');
     const acceptBtn = document.getElementById('cookieAcceptBtn');
     if (!banner || !acceptBtn) return;
-    
+
     banner.style.display = 'flex';
-    
+    requestAnimationFrame(() => {
+        banner.classList.add('cookie-banner--visible');
+    });
+
     acceptBtn.addEventListener('click', function() {
         // TODO: раскомментировать для продакшена
         // localStorage.setItem('cookiesAccepted', 'true');
-        banner.style.opacity = '0';
-        setTimeout(() => { banner.style.display = 'none'; }, 300);
+        banner.classList.remove('cookie-banner--visible');
+        banner.classList.add('cookie-banner--hiding');
+        setTimeout(() => {
+            banner.style.display = 'none';
+            banner.classList.remove('cookie-banner--hiding');
+        }, 350);
     });
 }
 
@@ -721,7 +725,9 @@ function showTypingIndicator() {
 
 // Добавление сообщения бота (с задержками)
 // existingLoader — если передан, переиспользует уже показанный индикатор для первого элемента
-async function addBotMessage(text, existingLoader) {
+// options.fastMode — ускоренный вывод (для заготовленного приветствия)
+async function addBotMessage(text, existingLoader, options = {}) {
+    const fastMode = options.fastMode === true;
     const processedText = processBotMessage(text);
     
     // Собираем все элементы для последовательного вывода (порядок как в ответе модели)
@@ -757,16 +763,23 @@ async function addBotMessage(text, existingLoader) {
     }
     
     // Для первого элемента: переиспользуем существующий индикатор или создаём новый
-    let loader = existingLoader || addLoadingMessage();
-    
+    let loader = existingLoader || (fastMode ? null : addLoadingMessage());
+
     for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
-        
+        const delay = fastMode ? (i === 0 ? 0 : 350) : item.delay;
+
         // Ждём задержку, затем заменяем/убираем индикатор
-        await sleep(item.delay);
+        if (delay > 0) {
+            await sleep(delay);
+        } else if (loader && !fastMode) {
+            await sleep(0);
+        }
         
         // Звук при появлении сообщения
-        playRingtone();
+        if (!fastMode) {
+            playRingtone();
+        }
         
         // Выводим элемент
         if (item.type === 'text') {
@@ -788,7 +801,7 @@ async function addBotMessage(text, existingLoader) {
         scrollToBottom();
         
         // Если не последний — сразу показываем новый индикатор
-        if (i < queue.length - 1) {
+        if (i < queue.length - 1 && !fastMode) {
             loader = addLoadingMessage();
         }
     }
@@ -885,6 +898,7 @@ function showStartQuestions() {
     questionsContainer.className = 'start-questions-container';
     
     const questions = [
+        'Рассчитать стоимость навеса',
         'Сколько стоит навес под ключ?',
         'Какой материал кровли выбрать?',
         'Чем вы отличаетесь от других компаний?',
@@ -896,6 +910,9 @@ function showStartQuestions() {
     questions.forEach((question, index) => {
         const questionBtn = document.createElement('button');
         questionBtn.className = 'start-question-btn';
+        if (index === 0) {
+            questionBtn.classList.add('start-question-btn--primary');
+        }
         questionBtn.textContent = question;
         questionBtn.addEventListener('click', () => {
             // Добавляем выбранный вопрос как сообщение пользователя

@@ -315,7 +315,7 @@ body {
 }
 
 .chat-avatar {
-    display: flex;
+    display: none;
     align-items: flex-start;
 }
 
@@ -636,6 +636,16 @@ body {
     background-color: #DBBA94;
     border: 1px solid #DBBA94;
     color: #ffffff;
+}
+
+.start-question-btn--primary {
+    border-color: #DBBA94;
+    background-color: rgba(219, 186, 148, 0.15);
+    font-family: "Montserrat-Bold", sans-serif;
+}
+
+.start-question-btn--primary:hover {
+    background-color: #DBBA94;
 }
 
 
@@ -1194,36 +1204,54 @@ body {
 
 
 
-/* Cookie Banner — Mobile First */
+/* Cookie Banner — Mobile First (верх экрана, не перекрывает чат) */
 .cookie-banner {
     display: none;
     position: fixed;
-    bottom: 30px;
-    right: 0;
-    left: 0;
+    top: 10px;
+    right: 10px;
+    left: 10px;
     margin: 0 auto;
-    width: 280px;
+    width: auto;
+    max-width: 360px;
     z-index: 1000;
-    transition: opacity 0.3s ease;
+    opacity: 0;
+    transform: translateY(-16px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    pointer-events: none;
+}
+
+.cookie-banner.cookie-banner--visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.cookie-banner.cookie-banner--hiding {
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
 }
 
 .cookie-banner-content {
     background-color: #fff;
-    border-radius: 14px;
-    box-shadow: 0 0 10px 1px #929090;
-    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 8px 10px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 8px;
     align-items: center;
 }
 
 .cookie-text {
-    font-size: 11px;
+    font-size: 10px;
     color: #000000;
-    line-height: 120%;
+    line-height: 130%;
     margin: 0;
-    text-align: center;
+    text-align: left;
+    flex: 1;
+    min-width: 0;
 }
 
 .cookie-link {
@@ -1239,10 +1267,12 @@ body {
     background-color: #DBBA94;
     color: #fff;
     border: none;
-    border-radius: 16px;
-    width: 220px;
-    height: 46px;
-    font-size: 16px;
+    border-radius: 14px;
+    width: auto;
+    min-width: 88px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
     font-family: "Montserrat-Bold", sans-serif;
     cursor: pointer;
     white-space: nowrap;
@@ -1730,34 +1760,33 @@ body {
     
 
 
-    /* Cookie Banner — 768px: правый нижний угол, горизонтальный */
+    .chat-avatar {
+        display: flex;
+    }
+
+    /* Cookie Banner — 768px: правый верхний угол, над чатом */
     .cookie-banner {
-        bottom: 60px;
-        right: 20px;
+        top: 16px;
+        right: 16px;
         left: auto;
         margin: 0;
-        width: 550px;
+        max-width: 520px;
     }
 
     .cookie-banner-content {
-        flex-direction: row;
-        align-items: center;
-        
-        padding: 14px;
-        gap: 14px;
-        border-radius: 20px;
+        padding: 12px 14px;
+        gap: 12px;
+        border-radius: 16px;
     }
 
     .cookie-text {
-        font-size: 12px;
-        text-align: left;
+        font-size: 11px;
     }
 
     .cookie-accept-btn {
-        width: 160px;
-        height: 48px;
-        border-radius: 16px;
-        font-size: 18px;
+        min-width: 120px;
+        height: 40px;
+        font-size: 14px;
     }
 
     /* Modal 768px */
