@@ -2,7 +2,7 @@
 // Используем Vercel API route (работает и локально через vercel dev, и на продакшене)
 const API_URL = '/api/chat';
 const MODEL = 'gpt-4.1-mini';
-const MAX_TOKENS = 300;
+const MAX_TOKENS = 800;
 const MAX_HISTORY = 10; // Сохраняем только 10 последних сообщений
 
 // Элементы DOM
@@ -36,18 +36,7 @@ function playRingtone() {
 let messageHistory = [];
 let systemPrompt = '';
 let dialogTranscript = [];
-let chatLeadSent = false;
 let chatStartedGoalSent = false;
-
-/** ID счётчика Яндекс.Метрики (как в index.html / thanks.html) */
-const YM_COUNTER_ID = 108469791;
-
-function sendChatStartedGoal() {
-    if (chatStartedGoalSent) return;
-    if (typeof window.ym !== 'function') return;
-    window.ym(YM_COUNTER_ID, 'reachGoal', 'chat_started');
-    chatStartedGoalSent = true;
-}
 
 function recordTranscriptEntry(role, content) {
     const text = String(content || '').trim();
@@ -106,12 +95,9 @@ function buildChatTranscriptText() {
 }
 
 async function sendChatLeadIfReady() {
-    if (chatLeadSent) return;
     const name = String(window.userName || '').trim();
     const phone = String(window.userPhone || '').trim();
     if (!name || !phone) return;
-
-    chatLeadSent = true;
 
     const payload = {
         name,
@@ -134,9 +120,12 @@ async function sendChatLeadIfReady() {
         if (!response.ok || !result.success) {
             throw new Error(result.error || 'Не удалось отправить заявку из чата.');
         }
+        if (typeof window.ym === 'function') {
+            window.ym(109250103, 'reachGoal', 'lead_sent');
+            window.ym(109284321, 'reachGoal', 'lead_sent');
+        }
     } catch (error) {
         console.error('Ошибка отправки заявки из чата:', error);
-        chatLeadSent = false;
     }
 }
 
@@ -172,12 +161,12 @@ async function loadSystemPrompt() {
         } else {
             // Если оба файла не загрузились, используем дефолтный промпт
             console.warn('Не удалось загрузить промпты, используется по умолчанию');
-            systemPrompt = 'Ты — Диана, виртуальный AI-консультант. Отвечай дружелюбно и профессионально.';
+            systemPrompt = 'Ты — Роман, ИИ-консультант компании ЮгСтройМеталл. Отвечай дружелюбно и профессионально.';
             messageHistory.push({ role: 'system', content: systemPrompt });
         }
     } catch (error) {
         console.error('Ошибка при загрузке промптов:', error);
-        systemPrompt = 'Ты — Диана, виртуальный AI-консультант. Отвечай дружелюбно и профессионально.';
+        systemPrompt = 'Ты — Роман, ИИ-консультант компании ЮгСтройМеталл. Отвечай дружелюбно и профессионально.';
         messageHistory.push({ role: 'system', content: systemPrompt });
     }
 }
@@ -200,12 +189,20 @@ async function initializeDialog() {
         
         // Добавляем ответ в историю
         messageHistory.push({ role: 'assistant', content: botResponse });
-        sendChatStartedGoal();
+        if (!chatStartedGoalSent && typeof window.ym === 'function') {
+            window.ym(109250103, 'reachGoal', 'chat_started');
+            window.ym(109284321, 'reachGoal', 'chat_started');
+            chatStartedGoalSent = true;
+        }
         
     } catch (error) {
         console.error('Ошибка при инициализации диалога:', error);
-        await addBotMessage('Здравствуйте! Я Диана, ваш AI-консультант. Чем могу помочь?', loadingId);
-        sendChatStartedGoal();
+        await addBotMessage('Здравствуйте! Я Роман, ИИ-консультант ЮгСтройМеталл. Чем могу помочь?', loadingId);
+        if (!chatStartedGoalSent && typeof window.ym === 'function') {
+            window.ym(109250103, 'reachGoal', 'chat_started');
+            window.ym(109284321, 'reachGoal', 'chat_started');
+            chatStartedGoalSent = true;
+        }
     } finally {
         sendBtn.disabled = false;
         chatInput.disabled = false;
@@ -478,6 +475,11 @@ function initCallbackRequestForm() {
                 throw new Error(result.error || 'Не удалось отправить заявку. Попробуйте позже.');
             }
 
+            if (typeof window.ym === 'function') {
+                window.ym(109250103, 'reachGoal', 'lead_sent');
+                window.ym(109284321, 'reachGoal', 'lead_sent');
+            }
+
             shouldUnlockSubmit = false;
             if (submitBtn) {
                 submitBtn.textContent = 'Заявка отправлена';
@@ -692,8 +694,8 @@ function addUserMessage(text) {
 function getTypingDelay(text) {
     if (!text) return 1100;
     const len = text.length;
-    // Минимум 1000мс, ~15мс на символ, максимум 2500мс
-    return Math.min(Math.max(2500, len * 20), 6000);
+    // Минимум 2200мс, ~20мс на символ, максимум 5000мс
+    return Math.min(Math.max(2200, len * 19), 5000);
 }
 
 // Задержки для разных типов элементов
@@ -704,7 +706,7 @@ const DELAY = {
     INPUT_FORM: 2200,                        // формы ввода
     GALLERY: 2200,                          // галерея
     VIDEO_REVIEWS: 2200,                   // слайдер видеоотзывов
-    START_QUESTIONS: 3000,                  // стартовые вопросы
+    START_QUESTIONS: 2200,                  // стартовые вопросы
     ACCEPTED: 1500,                          // плашка заявки
 };
 
@@ -960,7 +962,7 @@ function showMessengerOptions() {
     const messengersContainer = document.createElement('div');
     messengersContainer.className = 'messengers-container';
     
-    const messengers = ['WhatsApp', 'Telegram', 'Max'];
+    const messengers = ['Позвонить мне', 'Telegram', 'Max'];
 
     messengers.forEach((messenger) => {
         const button = document.createElement('button');
@@ -1038,6 +1040,10 @@ function showNameInputForm() {
     formContainer.appendChild(input);
     formContainer.appendChild(submitBtn);
     chatMessages.appendChild(formContainer);
+    if (typeof window.ym === 'function') {
+        window.ym(109250103, 'reachGoal', 'name_form_shown');
+        window.ym(109284321, 'reachGoal', 'name_form_shown');
+    }
     adjustChatWindowHeight();
     scrollToBottom();
 }
@@ -1142,6 +1148,10 @@ function showPhoneInputForm() {
     formContainer.appendChild(agreeLabel);
     formContainer.appendChild(errorNode);
     chatMessages.appendChild(formContainer);
+    if (typeof window.ym === 'function') {
+        window.ym(109250103, 'reachGoal', 'phone_form_shown');
+        window.ym(109284321, 'reachGoal', 'phone_form_shown');
+    }
     adjustChatWindowHeight();
     scrollToBottom();
 }

@@ -4,13 +4,6 @@ const cors = require('cors');
 const axios = require('axios');
 const FormData = require('form-data');
 
-function requireEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`❌ Missing env: ${name}`);
-  }
-  return value.trim();
-}
 const router = express.Router();
 
 router.use(cors());
@@ -30,21 +23,13 @@ const BITRIX_TEMPLATE = {
   MESSENGER_FIELD_ID: 'UF_CRM_MESSENGER_FIELD_ID'
 };
 
-// Настройки UniSender Go API (ключ опционален при старте — сервер поднимается и без него)
-function getUnisenderGoApiKey() {
-  const raw = process.env.UNISENDER_GO_API_KEY;
-  if (raw == null || raw === '') return '';
-  return String(raw).trim();
-}
-
-if (!getUnisenderGoApiKey()) {
-  console.warn(
-    '[unisender] UNISENDER_GO_API_KEY не задан — письма не отправляются. Добавьте переменную в Railway → Variables.'
-  );
-}
-
+// Настройки UniSender Go API
+const UNISENDER_GO_API_KEY = process.env.UNISENDER_GO_API_KEY.trim();
 const UNISENDER_GO_FROM_EMAIL = 'noreply@lp-chat.kz';
-const UNISENDER_GO_FROM_NAME = 'Brusketta';
+const UNISENDER_GO_FROM_NAME = 'YugStroyMetal';
+
+// Почта парсера amoCRM (создаёт сделку из письма)
+const AMOCRM_PARSER_EMAIL = '32638030.235443@parser.amocrm.ru';
 
 // Шаблон Telegram для будущего подключения (по умолчанию выключен)
 const TELEGRAM_TEMPLATE = {
@@ -69,7 +54,7 @@ function buildTelegramMessage(data) {
   const buttonText = escapeHtml(data.section_btn_text || '');
   const pageUrl = escapeHtml(data.page_url || 'Не указан');
   const lines = [
-    '<b>Новая заявка с сайта chat.ifcompany.pro</b>',
+    '<b>Новая заявка с сайта chat.krasnodar-naves.ru</b>',
     '',
     `<b>Источник:</b> ${sectionName}`,
     sectionText ? `<b>Текст блока:</b> ${sectionText}` : '',
@@ -152,19 +137,142 @@ async function sendLeadToTelegram(data) {
   }
 }
 
+const UNISENDER_GO_ENDPOINTS = [
+  'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
+  'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json'
+];
+
+/**
+ * Собирает текст заявки для парсера amoCRM.
+ * Форма обратной связи: мессенджер и история — прочерк.
+ */
+function buildAmoCrmParserBody(data) {
+  const name = String(data.name || '').trim() || '—';
+  const phone = String(data.phone || '').trim() || '—';
+  const messenger = String(data.messenger || '').trim() || '—';
+
+  const chatHistoryRaw = String(data.chat_history || '').trim();
+  let historySection = '—';
+
+  if (chatHistoryRaw) {
+    const lines = chatHistoryRaw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        let text = line;
+        if (text.startsWith('Менеджер:')) {
+          text = `Бот:${text.slice('Менеджер:'.length)}`;
+        }
+        return `** ${text}**`;
+      });
+
+    if (lines.length) {
+      historySection = [
+        '----------------------------------',
+        ...lines,
+        '----------------------------------'
+      ].join('\n');
+    }
+  }
+
+  return [
+    `Имя: ${name}`,
+    `Телефон: ${phone}`,
+    `Мессенджер: ${messenger}`,
+    '',
+    'ИСТОРИЯ ПЕРЕПИСКИ:',
+    historySection
+  ].join('\n');
+}
+
+async function sendUniSenderGoMessage(message) {
+  let lastError = null;
+
+  for (const url of UNISENDER_GO_ENDPOINTS) {
+    try {
+      const response = await axios.post(url, { message }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-API-KEY': UNISENDER_GO_API_KEY
+        },
+        timeout: 10000
+      });
+
+      const apiData = response.data || {};
+      const jobId = apiData.job_id
+        || apiData.result?.job_id
+        || apiData.result?.message_id
+        || apiData.message_id;
+
+      return {
+        success: true,
+        messageId: jobId || 'unknown',
+        server: url.includes('go1') ? 'go1' : 'go2',
+        responseData: apiData
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    `Оба сервера UniSender Go недоступны. Последняя ошибка: ${lastError?.response?.data?.error || lastError?.message}`
+  );
+}
+
+/**
+ * Отправляет заявку на парсер amoCRM (plain text для разбора полей).
+ */
+async function sendLeadToAmoCrmParser(data) {
+  try {
+    const plaintext = buildAmoCrmParserBody(data);
+    const historyChars = String(data.chat_history || '').trim().length;
+    const historyInBody = plaintext.includes('----------------------------------');
+
+    console.log('📧 amoCRM parser: подготовка письма', {
+      historyChars,
+      historyInBody,
+      bodyChars: plaintext.length
+    });
+
+    const result = await sendUniSenderGoMessage({
+      recipients: [{ email: AMOCRM_PARSER_EMAIL }],
+      subject: 'Заявка с сайта',
+      from_email: UNISENDER_GO_FROM_EMAIL,
+      from_name: UNISENDER_GO_FROM_NAME,
+      body: { plaintext },
+      track_read: 0,
+      track_links: 0
+    });
+
+    console.log('✅ amoCRM parser: письмо отправлено', result.messageId, {
+      historyInBody,
+      bodyChars: plaintext.length
+    });
+    return {
+      success: true,
+      message: 'Заявка отправлена в amoCRM parser',
+      emailMethod: 'UniSender Go API',
+      messageId: result.messageId,
+      server: result.server,
+      historyInBody,
+      historyChars: String(data.chat_history || '').trim().length
+    };
+  } catch (error) {
+    console.error('❌ amoCRM parser:', error.message);
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message
+    };
+  }
+}
+
 /**
  * Отправляет письмо через UniSender Go API
  */
 async function sendEmailViaUniSenderGo(data) {
-  const apiKey = getUnisenderGoApiKey();
-  if (!apiKey) {
-    return {
-      success: false,
-      error:
-        'Почта не настроена: задайте переменную окружения UNISENDER_GO_API_KEY на сервере (Railway → Variables).'
-    };
-  }
-
   try {
     // Формируем HTML письмо
     const html = generateEmailHTML(data);
@@ -174,10 +282,9 @@ async function sendEmailViaUniSenderGo(data) {
       message: {
         recipients: [
           { email: 'idrisovamir21tr@gmail.com' },
-          { email: 'brusketta.pro@gmail.com' },
           { email: 'mpleads@yandex.kz' }
         ],
-        subject: 'Заявка с сайта "chat.ifcompany.pro"',
+        subject: 'Заявка с сайта "chat.krasnodar-naves.ru"',
         from_email: UNISENDER_GO_FROM_EMAIL,
         from_name: UNISENDER_GO_FROM_NAME,
         body: {
@@ -212,42 +319,15 @@ async function sendEmailViaUniSenderGo(data) {
       });
     }
 
-    // Отправляем запрос к UniSender Go API (пробуем оба сервера)
-    const endpoints = [
-      'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
-      'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json'
-    ];
-
-    let lastError = null;
-    
-    for (const url of endpoints) {
-      try {
-        const response = await axios.post(url, emailData, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-API-KEY': apiKey
-          },
-          timeout: 10000 // 10 секунд таймаут
-        });
-
-        console.log("✅ Успех:", response.data);
-        return { 
-          success: true, 
-          message: 'Заявка успешно отправлена!',
-          emailMethod: 'UniSender Go API',
-          messageId: response.data.result?.message_id || 'unknown',
-          server: url.includes('go1') ? 'go1' : 'go2'
-        };
-      } catch (error) {
-        lastError = error;
-        continue; // Пробуем следующий сервер
-      }
-    }
-    
-    // Если оба сервера не сработали
-    console.error("Оба сервера (go1 и go2) не ответили");
-    throw new Error(`Оба сервера UniSender Go недоступны. Последняя ошибка: ${lastError?.response?.data?.error || lastError?.message}`);
+    const result = await sendUniSenderGoMessage(emailData.message);
+    console.log('✅ Успех:', result.responseData);
+    return {
+      success: true,
+      message: 'Заявка успешно отправлена!',
+      emailMethod: 'UniSender Go API',
+      messageId: result.messageId,
+      server: result.server
+    };
   } catch (error) {
     return { 
       success: false, 
@@ -309,7 +389,7 @@ function generateEmailHTML(data) {
 
   // Формируем итоговое письмо
   let html = `<html><body style='font-family:Arial,sans-serif;'>`;
-  html += `<h2>Вам поступила новая заявка с сайта "chat.ifcompany.pro"</h2>\r\n`;
+  html += `<h2>Вам поступила новая заявка с сайта "chat.krasnodar-naves.ru"</h2>\r\n`;
   html += '<b>Дата:</b> ' + new Date().toLocaleString('ru-RU') + '<br>';
   for (const sectionTitle in groups) {
     if (groups[sectionTitle].html) {
@@ -346,7 +426,7 @@ async function sendLeadToBitrix(data, webhook, fileFieldId, messengerFieldId, we
         NAME: data.name || '',
         PHONE: [{ VALUE: data.phone || '', VALUE_TYPE: 'WORK' }],
         // Название лида
-        TITLE: 'Заявка с сайта chat.ifcompany.pro',
+        TITLE: 'Заявка с сайта chat.krasnodar-naves.ru',
         // UTM метки
         UTM_CAMPAIGN: data.utm_campaign || '',
         UTM_CONTENT: data.utm_content || '',
@@ -429,11 +509,15 @@ async function sendLeadToBitrix(data, webhook, fileFieldId, messengerFieldId, we
 router.post('/api/send_contact', async (req, res) => {
   const data = req.body;
 
-  // Логируем входящие данные
+  const chatHistoryLen = String(data.chat_history || '').trim().length;
+  const leadSource = chatHistoryLen > 0 ? 'чат' : 'форма';
+
   console.log('📥 Входящие данные:', {
     name: data.name,
     phone: data.phone,
-    messenger: data.messenger
+    messenger: data.messenger || '—',
+    source: leadSource,
+    chat_history_chars: chatHistoryLen
   });
 
   // Простая валидация
@@ -455,18 +539,25 @@ router.post('/api/send_contact', async (req, res) => {
   }
 
   let emailResult = { success: false };
-  // 1) СНАЧАЛА — отправляем письмо
+  // 1) Письмо менеджерам
   try {
     emailResult = await sendEmailViaUniSenderGo(data);
-    if (!emailResult.success) {
-    } else {
+    if (emailResult.success) {
       console.log('Письмо: отправлено успешно');
     }
   } catch (err) {
     emailResult = { success: false, error: err?.message || 'Email send exception' };
   }
 
-  // 2) ПОТОМ — создаём лид в Bitrix (шаблон, по умолчанию выключен)
+  let amocrmResult = { success: false };
+  // 2) Заявка в amoCRM через парсер почты
+  try {
+    amocrmResult = await sendLeadToAmoCrmParser(data);
+  } catch (err) {
+    amocrmResult = { success: false, error: err?.message || 'amoCRM parser send exception' };
+  }
+
+  // 3) Лид в Bitrix (шаблон, по умолчанию выключен)
   let bitrixLead = { success: false, skipped: true, reason: 'Bitrix template disabled' };
   if (BITRIX_TEMPLATE.ENABLED && BITRIX_TEMPLATE.WEBHOOK) {
     try {
@@ -485,19 +576,32 @@ router.post('/api/send_contact', async (req, res) => {
     }
   }
 
-  // 3) Ответ всегда только с результатами всех шагов
-  const successAny = Boolean(telegramResult.success || emailResult.success || bitrixLead.success);
+  const successAny = Boolean(
+    telegramResult.success || emailResult.success || amocrmResult.success || bitrixLead.success
+  );
+
+  console.log('📊 Итог по заявке:', {
+    name: data.name,
+    source: leadSource,
+    telegram: telegramResult.skipped ? 'пропущен' : (telegramResult.success ? 'ok' : 'ошибка'),
+    email: emailResult.success ? 'ok' : 'ошибка',
+    amocrm: amocrmResult.success ? 'ok' : 'ошибка',
+    bitrix: bitrixLead.skipped ? 'выкл' : (bitrixLead.success ? 'ok' : 'ошибка'),
+    chat_history_in_amocrm: amocrmResult.historyInBody ?? (chatHistoryLen > 0 ? '?' : 'прочерк')
+  });
 
   return res.status(200).json({
-    success: successAny,          // ← успех, если прошёл хотя бы один шаг
-    telegram: telegramResult,     // детали по Telegram
-    email: emailResult,           // детали по письму
-    bitrixLead: bitrixLead,       // детали по шаблонному Bitrix
+    success: successAny,
+    telegram: telegramResult,
+    email: emailResult,
+    amocrm: amocrmResult,
+    bitrixLead: bitrixLead,
     errors: [
       !telegramResult.success && telegramResult.error,
       !emailResult.success && (emailResult.error || emailResult.message),
-      !bitrixLead.success && !bitrixLead.skipped && (bitrixLead.error)
-    ].filter(Boolean)             // список причин (если были)
+      !amocrmResult.success && amocrmResult.error,
+      !bitrixLead.success && !bitrixLead.skipped && bitrixLead.error
+    ].filter(Boolean)
   });
 });
 
